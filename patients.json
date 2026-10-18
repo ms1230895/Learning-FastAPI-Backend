@@ -5,9 +5,9 @@
         "age": 28,
         "gender": "female",
         "height": 1.65,
-        "weight": 90.0,
-        "bmi": 33.06,
-        "verdict": "Obese"
+        "weight": 75.0,
+        "bmi": 27.548209366391188,
+        "verdict": "Overweight"
     },
     "P002": {
         "name": "Ravi Mehta",
@@ -48,15 +48,6 @@
         "weight": 75,
         "bmi": 31.22,
         "verdict": "Obese"
-    },
-    "P006": {
-        "name": "John Doe",
-        "age": 30,
-        "gender": "Male",
-        "height": 175.5,
-        "weight": 70.2,
-        "bmi": 0.0022792022792022795,
-        "verdict": "Underweight"
     },
     "P007": {
         "name": "Gaurav",

@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Path, HTTPException, Query
 from fastapi.responses import JSONResponse
 from typing import Optional, Annotated, List, Literal
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, field_validator
 import json
 
 app = FastAPI()
@@ -11,10 +11,17 @@ class patient(BaseModel):
 
     id: Annotated[str, Field(..., description="Unique identifier for the patient", example="P001")]
     name:Annotated[str, Field(..., description="Name of the patient", example="John Doe")]
+    city: Annotated[Optional[str], Field(default=None, description="City of the patient", example="Mumbai")]
     age: Annotated[int, Field(..., description="Age of the patient", example=30)]
-    gender: Annotated[Literal['Male', 'Female', 'Other'], Field(..., description="Gender of the patient", example="Male")]
+    gender: Annotated[Literal['male', 'female', 'other'], Field(..., description="Gender of the patient", example="male")]
     height: Annotated[float, Field(..., description="Height of the patient in m", example=175.5)]
     weight: Annotated[float, Field(..., description="Weight of the patient in kg", example=70.2)]
+
+    @field_validator('gender', mode='before')
+    @classmethod
+    def lowercase_gender(cls, value):
+        # Accept "Male"/"male" alike, since patients.json stores lowercase
+        return value.lower() if isinstance(value, str) else value
 
     @computed_field
     @property
@@ -34,6 +41,22 @@ class patient(BaseModel):
             return "Overweight"
         else:
             return "Obesity"
+
+class PatientUpdate(BaseModel):
+    name: Annotated[Optional[str], Field(default=None)]
+    city: Annotated[Optional[str], Field(default=None)]
+    age: Annotated[Optional[int], Field(default=None, gt=0)]
+    gender: Annotated[Optional[Literal['male', 'female', 'other']], Field(default=None)]
+    height: Annotated[Optional[float], Field(default=None, gt=0)]
+    weight: Annotated[Optional[float], Field(default=None, gt=0)]
+
+    # Swagger pre-fills this instead of 0/"string", which would fail validation
+    model_config = {"json_schema_extra": {"examples": [{"weight": 75.0}]}}
+
+    @field_validator('gender', mode='before')
+    @classmethod
+    def lowercase_gender(cls, value):
+        return value.lower() if isinstance(value, str) else value
 
 
 
@@ -93,6 +116,38 @@ def create_patient(patient: patient):
     save_data(data)
     return JSONResponse(status_code=201, content={"message": f"Patient with ID {patient.id} created successfully."})
 
+
+@app.put("/update/{patient_id}")
+def update_patient(patient_id: str, patient_update: PatientUpdate):
+    data = load_data()
+    if patient_id not in data:
+        raise HTTPException(status_code=404, detail=f"Patient with ID {patient_id} not found.")
+
+    existing_patient = data[patient_id]
+
+    update_data = patient_update.model_dump(exclude_unset=True)
+
+    for key, value in update_data.items():
+        existing_patient[key] = value
+
+    existing_patient['id'] = patient_id  # Ensure the ID remains unchanged
+    patient_pydantic_object = patient(**existing_patient)  # Create a Pydantic object to compute BMI and verdict
+
+    existing_patient = patient_pydantic_object.model_dump(exclude=['id'])  # Update the existing patient data with computed fields
+
+    data[patient_id] = existing_patient
+
+    save_data(data)
+    return {"message": f"Patient with ID {patient_id} updated successfully."}
+
+@app.delete("/delete/{patient_id}")
+def delete_patient(patient_id: str):
+    data = load_data()
+    if patient_id not in data:
+        raise HTTPException(status_code=404, detail=f"Patient with ID {patient_id} not found.")
+    del data[patient_id]
+    save_data(data)
+    return {"message": f"Patient with ID {patient_id} deleted successfully."}
 
     
 
