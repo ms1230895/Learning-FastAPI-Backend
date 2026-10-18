@@ -21,7 +21,10 @@ patient_dict = {'name': 'nitish', 'age': 35, 'address': address1}
 
 patient1 = Patient(**patient_dict)
 
-temp = patient1.model_dump(exclude_unset=True)
+temp = patient1.model_dump(
+    include={'name': True, 'age': True, 'address': {'city', 'state'}},
+    exclude={'address': {'pin'}},
+)
 
 print(temp)
 print(type(temp))
